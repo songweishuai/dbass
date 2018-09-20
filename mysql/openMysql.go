@@ -45,8 +45,8 @@ func GetDbInstance() (*sql.DB, error) {
 		return nil, err
 	}
 
-	//db.SetMaxOpenConns()
-	//db.SetMaxIdleConns()
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(15)
 	//db.SetConnMaxLifetime()
 
 	return db, nil
