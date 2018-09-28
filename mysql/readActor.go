@@ -141,7 +141,7 @@ func ReadActors(c *gin.Context) {
 
 	/*create mysql sentence*/
 	s := createSql(&p)
-	fmt.Println("sql:",s)
+	fmt.Println("sql:", s)
 
 	/*perform*/
 	rows, err := db.Query(s)
@@ -163,7 +163,7 @@ func ReadActors(c *gin.Context) {
 	//	ActorID   int32
 	//},100)
 	var actorNum int32 = 1000
-	var actors = make([]Actor, actorNum)
+	var actors = make([]Actor, 0, actorNum)
 	var count int32 = 0
 	for rows.Next() {
 		err := rows.Scan(&actors[count].Number, &actors[count].Name, &actors[count].Click)

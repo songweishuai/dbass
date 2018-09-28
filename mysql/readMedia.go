@@ -233,7 +233,8 @@ func ReadMedias(c *gin.Context) {
 	defer row.Close()
 
 	/*read medias*/
-	var mediaArray []media
+	//var mediaArray []media
+	mediaArray := make([]media, 0, 300)
 	i := 0
 	for row.Next() {
 		var m media
