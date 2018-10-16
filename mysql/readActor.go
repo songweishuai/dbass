@@ -137,6 +137,7 @@ func ReadActors(c *gin.Context) {
 	db, err := GetDbInstance()
 	if err != nil {
 		returnErrorMsg(c)
+		return
 	}
 
 	/*create mysql sentence*/
@@ -147,41 +148,42 @@ func ReadActors(c *gin.Context) {
 	rows, err := db.Query(s)
 	if err != nil {
 		returnErrorMsg(c)
+		return
 	}
 	defer rows.Close()
 
-	//types ,err:= rows.ColumnTypes()
-	//if err!=nil {
-	//	fmt.Println(err)
-	//}
-	//fmt.Println(*types[0])
-	//fmt.Println(rows.ColumnTypes())
+	types, err := rows.ColumnTypes()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(*types[0])
+	fmt.Println(rows.ColumnTypes())
 
-	//var actors =make([]struct{
-	//	ActorName string
-	//	ActorNo   int32
-	//	ActorID   int32
-	//},100)
 	var actorNum int32 = 1000
 	var actors = make([]Actor, 0, actorNum)
 	var count int32 = 0
+	var m Actor
 	for rows.Next() {
-		err := rows.Scan(&actors[count].Number, &actors[count].Name, &actors[count].Click)
+		err := rows.Scan(&m.Number, &m.Name, &m.Click)
 		if err != nil {
 			continue
 		}
-		if count >= actorNum-1 {
+		count++
+		actors = append(actors, m)
+		if count >= actorNum {
 			break
 		}
-		count++
 	}
+
 	if count <= 0 {
 		returnErrorMsg(c)
+		return
 	}
 
 	message, err := json.Marshal(actors[0:count])
 	if err != nil {
 		returnErrorMsg(c)
+		return
 	}
 	c.JSON(200, gin.H{
 		"status": "ok",

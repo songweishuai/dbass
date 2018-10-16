@@ -28,6 +28,7 @@ func CreateRouter() *gin.Engine {
 	//router.GET("/medias:ss/:name", mysql.ReadMedias)
 	router.GET("/medias", mysql.ReadMedias)
 	router.GET("/actors", mysql.ReadActors)
+	router.GET("/musicShadow",mysql.ReadMusicShadow)
 
 	return router
 }

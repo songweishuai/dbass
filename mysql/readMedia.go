@@ -99,8 +99,19 @@ func CreateSql(c *gin.Context) string {
 	//fmt.Println(p.ss, p.name, p.no, p.stroke, p.language, p.hot, p.new, p.actorId)
 
 	var isWhere = false
+	//if p.No {
+	//	//select * from medias where media_no in (7300616,8434232)
+	//}
+
+
 	if p.Len != "" {
-		s := fmt.Sprintf(" where media_namelen=%s", p.Len)
+		var s string
+		if isWhere {
+			s = fmt.Sprintf(" and media_namelen=%s", p.Len)
+		} else {
+			s = fmt.Sprintf(" where media_namelen=%s", p.Len)
+		}
+		//s := fmt.Sprintf(" where media_namelen=%s", p.Len)
 		isWhere = true
 		sqlSentence += s
 	}
@@ -233,30 +244,22 @@ func ReadMedias(c *gin.Context) {
 	defer row.Close()
 
 	/*read medias*/
-	//var mediaArray []media
-	mediaArray := make([]media, 0, 300)
+	mediaNum = 300
+	mediaArray := make([]media, 0, mediaNum)
+	var m media
 	i := 0
 	for row.Next() {
-		var m media
 		err := row.Scan(&m.Name, &m.Number, &m.ActorName1)
 		if err != nil {
 			continue
 		}
-		//fmt.Println(m.name, m.number, m.actorName1)
-		mediaArray = append(mediaArray, m)
 		i++
+		mediaArray = append(mediaArray, m)
+		if i >= mediaNum {
+			break
+		}
 	}
 	//fmt.Println("i :", i, mediaArray)
-
-	//mediaArray := make([]media, 12)
-	//i := 0
-	//for row.Next() {
-	//	row.Scan(&mediaArray[i].Name, &mediaArray[i].Number, &mediaArray[i].ActorName1)
-	//	if err != nil {
-	//		continue
-	//	}
-	//	i++
-	//}
 
 	/*to json*/
 	message, err := json.Marshal(mediaArray[0:i])
