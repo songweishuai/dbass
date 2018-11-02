@@ -6,6 +6,10 @@ import (
 )
 
 func GetRedisInfo(key string) (string, error) {
+	if key == "" {
+		return "", nil
+	}
+
 	//con, err := GetRedisInstance()
 	pool := GetPool()
 	if pool == nil {

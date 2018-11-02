@@ -32,7 +32,7 @@ func ReadMusicShadow(c *gin.Context) {
 		if err == nil && str != "" {
 			c.JSON(200, gin.H{
 				"status": "ok",
-				"msg":    string(str),
+				"data":    string(str),
 				"method": c.Request.Method,
 			})
 			return
@@ -88,13 +88,15 @@ func ReadMusicShadow(c *gin.Context) {
 	})
 
 	/*insert medias info to redis*/
-	go myRedis.SetRedisInfo(key, string(message))
+	if key != "" {
+		go myRedis.SetRedisInfo(key, string(message))
+	}
 }
 
 func returnMusicShadowErrorMsg(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"status": "error",
-		"msg":    "read muisc shadow fail",
+		"data":    "read muisc shadow fail",
 		"method": c.Request.Method,
 	})
 }

@@ -1,18 +1,42 @@
 package mysql
 
 import (
+	"dbass/error"
 	"dbass/myRedis"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"os"
 )
 
-type media struct {
-	Name       string `json:"Name"`
-	Number     int32  `json:"SerialNo"`
-	ActorName1 string `json:"ActorName"`
+//type media struct {
+//	Name       string `json:"Name"`
+//	Number     int32  `json:"SerialNo"`
+//	ActorName1 string `json:"ActorName"`
+//}
+
+type Media struct {
+	MediaNo         int
+	MediaName       string
+	MediaLangtype   int
+	MediaLangid     int
+	MediaTag1       string
+	MediaActName1   string
+	MediaActName2   string
+	MediaYuan       int
+	MediaBan        int
+	MediaSvrGroup   int
+	MediaFile       string
+	MediaStyle      string
+	MediaVolume     int
+	MediaStars      int
+	MediaActNo1     int
+	MediaActNo2     int
+	MediaDafen      int
+	MediaClimax     int
+	MediaClimaxInfo string
+	MediaYinYi      int
+	MediaLight      int
 }
 
 type mediaParameter struct {
@@ -28,21 +52,15 @@ type mediaParameter struct {
 	Len       string
 }
 
-func parseMediaParameter(c *gin.Context, p *mediaParameter) error {
+func (p *mediaParameter) parseMediaParameter(c *gin.Context) error {
 	if c == nil {
 		err := errors.New("gin.Context is nil")
 		return err
 	}
 
-	if p == nil {
-		err := errors.New("actorParameter p is nil")
-		return err
-	}
-
 	err := c.Request.ParseForm()
 	if err != nil {
-		err1 := errors.New("gin.Contest parse error")
-		return err1
+		return err
 	}
 
 	form := c.Request.Form
@@ -59,22 +77,18 @@ func parseMediaParameter(c *gin.Context, p *mediaParameter) error {
 	return nil
 }
 
-func createMediaRedisKey(p *mediaParameter) (string, error) {
-	if p == nil {
-		err := errors.New("parameter p is nil")
-		return "", err
-	}
-
+func (p *mediaParameter) createMediaRedisKey() (string, error) {
 	key, err := json.Marshal(*p)
 
 	return string(key), err
 }
 
-func CreateSql(c *gin.Context) string {
+func (p *mediaParameter) CreateSql(c *gin.Context) string {
 	/*parse media search parameter*/
-	var p mediaParameter
-	//sqlSentence := "select media_no,media_langtype,media_style,media_svrgroup,media_name,media_stars,media_langid,media_actname1,media_actname2,media_actno1,media_click,media_dafen,media_carria from medias"
-	sqlSentence := "select media_name,media_no,media_actname1 from medias"
+	sqlSentence := "select media_no,media_name,media_langtype,media_langid,media_tag1,media_actname1,media_actname2," +
+		"media_yuan,media_ban,media_svrgroup,media_file,media_style,media_volume,media_stars,media_actno1,media_actno2," +
+		"media_dafen,media_climax,media_climaxinfo,media_yinyi,media_light" +
+		" from medias"
 
 	err := c.Request.ParseForm()
 	if err != nil {
@@ -84,25 +98,10 @@ func CreateSql(c *gin.Context) string {
 
 	fmt.Println(c.Request.Form)
 
-	form := c.Request.Form
-
-	p.Ss = form.Get("ss")
-	p.Name = form.Get("name")
-	p.No = form.Get("name") /*can recv json array*/
-	p.Stroke = form.Get("stroke")
-	p.Language = form.Get("language")
-	p.Hot = form.Get("hot")
-	p.New = form.Get("new")
-	p.ActorId = form.Get("actorId")
-	p.Len = form.Get("len")
-
-	//fmt.Println(p.ss, p.name, p.no, p.stroke, p.language, p.hot, p.new, p.actorId)
-
 	var isWhere = false
 	//if p.No {
 	//	//select * from medias where media_no in (7300616,8434232)
 	//}
-
 
 	if p.Len != "" {
 		var s string
@@ -207,10 +206,10 @@ func CreateSql(c *gin.Context) string {
 func ReadMedias(c *gin.Context) {
 	//parse parameter
 	var p mediaParameter
-	err := parseMediaParameter(c, &p)
+	err := p.parseMediaParameter(c)
 
 	/*create redis media key*/
-	key, err := createMediaRedisKey(&p)
+	key, err := p.createMediaRedisKey()
 	if err == nil && key != "" {
 		/*read medias info from redis*/
 		str, err := myRedis.GetRedisInfo(key)
@@ -218,7 +217,7 @@ func ReadMedias(c *gin.Context) {
 			/*return search msg*/
 			c.JSON(200, gin.H{
 				"status": "ok",
-				"msg":    str,
+				"data":   str,
 				"method": c.Request.Method,
 			})
 			return
@@ -226,30 +225,30 @@ func ReadMedias(c *gin.Context) {
 	}
 
 	/*mysql sentence*/
-	s := CreateSql(c)
+	s := p.CreateSql(c)
 
 	/*get db*/
 	db, err := GetDbInstance()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		myError.ReturnErrorMsg(c, err)
 	}
 
 	/*perform mysql sentence*/
 	row, err := db.Query(s)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		myError.ReturnErrorMsg(c, err)
 	}
 	defer row.Close()
 
 	/*read medias*/
-	mediaNum = 300
-	mediaArray := make([]media, 0, mediaNum)
-	var m media
+	mediaNum := 300
+	mediaArray := make([]Media, 0, mediaNum)
+	var m Media
 	i := 0
 	for row.Next() {
-		err := row.Scan(&m.Name, &m.Number, &m.ActorName1)
+		err := row.Scan(&m.MediaNo, &m.MediaName, &m.MediaLangtype, &m.MediaLangid, &m.MediaTag1, &m.MediaActName1, &m.MediaActName2,
+			&m.MediaYuan, &m.MediaBan, &m.MediaSvrGroup, &m.MediaFile, &m.MediaStyle, &m.MediaVolume, &m.MediaStars, &m.MediaActNo1,
+			&m.MediaActNo2, &m.MediaDafen, &m.MediaClimax, &m.MediaClimaxInfo, &m.MediaYinYi, &m.MediaLight)
 		if err != nil {
 			continue
 		}
@@ -259,30 +258,26 @@ func ReadMedias(c *gin.Context) {
 			break
 		}
 	}
-	//fmt.Println("i :", i, mediaArray)
 
 	/*to json*/
 	message, err := json.Marshal(mediaArray[0:i])
 	if err != nil {
-		c.JSON(200, gin.H{
-			"statue": "error",
-			"msg":    "read medias error",
-			"method": c.Request.Method,
-		})
+		myError.ReturnErrorMsg(c, err)
 		return
 	}
-	//fmt.Printf("%s\n", message)
 
-	/*insert medias info to redis*/
-	go myRedis.SetRedisInfo(key, string(message))
 
 	/*return search msg*/
 	c.JSON(200, gin.H{
 		"status": "ok",
-		"msg":    string(message),
+		"data":   string(message),
 		"method": c.Request.Method,
 	})
 
+	/*insert medias info to redis*/
+	if key != "" {
+		go myRedis.SetRedisInfo(key, string(message))
+	}
 	//bytes.NewBuffer()
 	//c.String(200,string(message))
 }

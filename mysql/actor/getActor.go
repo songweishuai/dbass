@@ -1,7 +1,9 @@
-package mysql
+package actor
 
 import (
+	"dbass/error"
 	"dbass/myRedis"
+	"dbass/mysql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +13,7 @@ import (
 type Actor struct {
 	Number int32
 	Name   string
-	Click  int32
+	TypeId int32
 }
 
 type actorParameter struct {
@@ -20,21 +22,15 @@ type actorParameter struct {
 	TypeId string
 }
 
-func parseActorParameter(c *gin.Context, p *actorParameter) error {
+func (p *actorParameter) parseActorParameter(c *gin.Context) error {
 	if c == nil {
 		err := errors.New("gin.Context is nil")
 		return err
 	}
 
-	if p == nil {
-		err := errors.New("actorParameter p is nil")
-		return err
-	}
-
 	err := c.Request.ParseForm()
 	if err != nil {
-		err1 := errors.New("gin.Contest parse error")
-		return err1
+		return err
 	}
 
 	form := c.Request.Form
@@ -45,38 +41,14 @@ func parseActorParameter(c *gin.Context, p *actorParameter) error {
 	return nil
 }
 
-func createActorRedisKey(p *actorParameter) (string, error) {
-	if p == nil {
-		err := errors.New("parameter p is nil")
-		return "", err
-	}
-
-	key, err := json.Marshal(*p)
+func (p *actorParameter) createActorRedisKey() (string, error) {
+	key, err := json.Marshal(p)
 
 	return string(key), err
 }
 
-func createSql(p *actorParameter) string {
-	/*parse media search parameter*/
-	//var p actorParameter
-	//sqlSentence := "select media_no,media_langtype,media_style,media_svrgroup,media_name,media_stars,media_langid,media_actname1,media_actname2,media_actno1,media_click,media_dafen,media_carria from medias"
-	sqlSentence := "select actor_no,actor_name,actor_click from actors"
-
-	//err := c.Request.ParseForm()
-	//if err != nil {
-	//	sqlSentence += "limit 1000"
-	//	return sqlSentence
-	//}
-
-	if p == nil {
-		sqlSentence += "limit 1000"
-		return sqlSentence
-	}
-
-	//form := c.Request.Form
-	//p.ss = form.Get("ss")
-	//p.name = form.Get("name")
-	//p.typeId = form.Get("typeid")
+func (p *actorParameter) createSql() string {
+	sqlSentence := "select actor_no,actor_name,actor_typeid from actors"
 
 	var isWhere = false
 	if p.Ss != "" {
@@ -114,19 +86,16 @@ func createSql(p *actorParameter) string {
 func ReadActors(c *gin.Context) {
 	//parse parameter
 	var p actorParameter
-	parseActorParameter(c, &p)
+	p.parseActorParameter(c)
 
-	//create redis key
-	key, err := createActorRedisKey(&p)
-
-	//get actors info from redis
+	//create redis key and get actors info from redis
+	key, err := p.createActorRedisKey()
 	if err == nil && key != "" {
-		fmt.Println("key:", key)
 		str, err := myRedis.GetRedisInfo(key)
 		if err == nil && str != "" {
 			c.JSON(200, gin.H{
 				"status": "ok",
-				"msg":    string(str),
+				"data":   str,
 				"method": c.Request.Method,
 			})
 			return
@@ -134,37 +103,30 @@ func ReadActors(c *gin.Context) {
 	}
 
 	/*get mysql instance*/
-	db, err := GetDbInstance()
+	db, err := mysql.GetDbInstance()
 	if err != nil {
-		returnErrorMsg(c)
+		myError.ReturnErrorMsg(c, err)
 		return
 	}
 
 	/*create mysql sentence*/
-	s := createSql(&p)
+	s := p.createSql()
 	fmt.Println("sql:", s)
 
 	/*perform*/
 	rows, err := db.Query(s)
 	if err != nil {
-		returnErrorMsg(c)
+		myError.ReturnErrorMsg(c, err)
 		return
 	}
 	defer rows.Close()
-
-	types, err := rows.ColumnTypes()
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(*types[0])
-	fmt.Println(rows.ColumnTypes())
 
 	var actorNum int32 = 1000
 	var actors = make([]Actor, 0, actorNum)
 	var count int32 = 0
 	var m Actor
 	for rows.Next() {
-		err := rows.Scan(&m.Number, &m.Name, &m.Click)
+		err := rows.Scan(&m.Number, &m.Name, &m.TypeId)
 		if err != nil {
 			continue
 		}
@@ -176,18 +138,18 @@ func ReadActors(c *gin.Context) {
 	}
 
 	if count <= 0 {
-		returnErrorMsg(c)
+		myError.ReturnErrorMsg(c, err)
 		return
 	}
 
 	message, err := json.Marshal(actors[0:count])
 	if err != nil {
-		returnErrorMsg(c)
+		myError.ReturnErrorMsg(c, err)
 		return
 	}
 	c.JSON(200, gin.H{
 		"status": "ok",
-		"msg":    string(message),
+		"data":   string(message),
 		"method": c.Request.Method,
 	})
 
@@ -195,12 +157,4 @@ func ReadActors(c *gin.Context) {
 	if key != "" {
 		go myRedis.SetRedisInfo(key, string(message))
 	}
-}
-
-func returnErrorMsg(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status": "error",
-		"msg":    "read actor fail",
-		"method": c.Request.Method,
-	})
 }

@@ -2,16 +2,14 @@ package main
 
 import (
 	"dbass/http"
+			"os"
 	"dbass/mysql"
-	"fmt"
-	"os"
 )
 
 func main() {
-	fmt.Println("my name is dbass")
-
 	/*init mysql connect use gorm*/
-	mysql.InitMysql("root", "Thunder#123", "192.168.2.201")
+	//mysql.InitMysql("root", "Thunder#123", "192.168.2.201")
+	mysql.LoadServerConfig()
 
 	/*create http web*/
 	err := http.CreateHttpWeb()
